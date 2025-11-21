@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planetary Stewardship Dashboard</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    font-family: 'Arial', sans-serif;
+    background: radial-gradient(ellipse at center, #000010 0%, #0d001a 100%);
+    color: #fff;
+  }
+
+  body {
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .starfield {
+    position: fixed;
+    top: 0; left: 0;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(2px 2px at 20px 30px, #fff, transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+                radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.9), transparent),
+                radial-gradient(1px 1px at 230px 80px, #fff, transparent),
+                radial-gradient(2px 2px at 300px 150px, rgba(200,220,255,0.8), transparent),
+                radial-gradient(1px 1px at 370px 50px, #fff, transparent),
+                radial-gradient(2px 2px at 450px 180px, rgba(255,255,255,0.7), transparent);
+    background-size: 500px 300px;
+    background-color: transparent;
+    z-index: 0;
+    animation: star-move 120s linear infinite;
+  }
+
+  @keyframes star-move {
+    from { transform: translate(0, 0); }
+    to { transform: translate(-500px, -300px); }
+  }
+
+  .planetary-dashboard {
+    position: relative;
+    z-index: 2;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 20px;
+    backdrop-filter: blur(8px);
+    border-radius: 20px;
+    background: rgba(10, 10, 30, 0.75);
+    box-shadow: 0 0 30px rgba(100,200,255,0.15);
+    min-height: calc(100vh - 60px);
+    box-sizing: border-box;
+  }
+
+  h1 { text-align: center; font-weight: 400; margin-bottom: 5px; font-size: 1.8em; }
+  .subtitle { text-align: center; opacity: 0.6; margin-bottom: 20px; font-size: 0.9em; }
+
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+  }
+
+  .stat-box {
+    background: rgba(255,255,255,0.05);
+    padding: 15px 25px;
+    border-radius: 12px;
+    text-align: center;
+    min-width: 100px;
+  }
+
+  .stat-box .label { font-size: 0.75em; opacity: 0.6; text-transform: uppercase; }
+  .stat-box .value { font-size: 1.8em; font-weight: bold; background: linear-gradient(90deg, #0ff, #0f0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  .xp-bar {
+    height: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.15);
+    overflow: hidden;
+    margin: 10px 0 20px;
+    position: relative;
+  }
+
+  .xp-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #0ff 0%, #0f0 100%);
+    border-radius: 10px;
+    transition: width 0.6s ease-in-out;
+    box-shadow: 0 0 10px rgba(0,255,200,0.5);
+  }
+
+  .xp-label {
+    text-align: center;
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-top: -5px;
+    margin-bottom: 15px;
+  }
+
+  .section-title {
+    font-size: 1em;
+    margin: 20px 0 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .task-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .task-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    margin: 8px 0;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    transition: transform 0.3s, background 0.3s;
+    border-left: 3px solid #0ff;
+  }
+
+  .task-list li:hover { transform: scale(1.02); background: rgba(255,255,255,0.08); }
+  .task-list li.completed { opacity: 0.5; border-left-color: #0f0; }
+  .task-list li.completed span { text-decoration: line-through; }
+
+  .task-list li .task-info { display: flex; flex-direction: column; gap: 3px; }
+  .task-list li .task-title { font-size: 1em; }
+  .task-list li .task-meta { font-size: 0.7em; opacity: 0.5; }
+
+  .task-list button, .controls button, .add-form button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #0ff, #0f0);
+    color: #000;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.2s, box-shadow 0.2s;
+    font-size: 0.85em;
+  }
+
+  .task-list button:hover, .controls button:hover, .add-form button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(0,255,200,0.4);
+  }
+
+  .task-list button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+  }
+
+  .controls button.danger {
+    background: linear-gradient(135deg, #f55, #f00);
+  }
+
+  .add-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+
+  .add-form input {
+    flex: 1;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 1em;
+  }
+
+  .add-form input::placeholder { color: rgba(255,255,255,0.4); }
+  .add-form input:focus { outline: 2px solid rgba(0,255,200,0.5); }
+
+  .add-form select {
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .achievements {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .badge {
+    background: rgba(255,255,255,0.08);
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: transform 0.2s;
+  }
+
+  .badge:hover { transform: scale(1.05); }
+  .badge.locked { opacity: 0.3; filter: grayscale(1); }
+
+  .mnemonic-backup {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    font-size: 0.85em;
+  }
+
+  .mnemonic-backup code {
+    display: block;
+    margin-top: 8px;
+    padding: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    font-family: monospace;
+    letter-spacing: 1px;
+    word-break: break-all;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 40px;
+    opacity: 0.6;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: linear-gradient(135deg, #0ff, #0f0);
+    color: #000;
+    padding: 12px 25px;
+    border-radius: 30px;
+    font-weight: bold;
+    z-index: 1000;
+    transition: transform 0.4s ease;
+    box-shadow: 0 5px 20px rgba(0,255,200,0.3);
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .empty-state {
+    text-align: center;
+    padding: 30px;
+    opacity: 0.5;
+  }
+
+  .priority-high { border-left-color: #f55 !important; }
+  .priority-medium { border-left-color: #fa0 !important; }
+  .priority-low { border-left-color: #0f0 !important; }
+
+  footer {
+    text-align: center;
+    padding: 15px;
+    font-size: 0.8em;
+    opacity: 0.4;
+  }
+</style>
+</head>
+<body>
+
+<div class="starfield"></div>
+
+<div class="planetary-dashboard">
+  <h1>🌌 Planetary Steward Dashboard</h1>
+  <p class="subtitle">Nurture the cosmos, one task at a time</p>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="label">Level</div>
+      <div class="value" id="level">1</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Total XP</div>
+      <div class="value" id="total-xp">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Tasks Done</div>
+      <div class="value" id="tasks-done">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Streak</div>
+      <div class="value" id="streak">0</div>
+    </div>
+  </div>
+
+  <div class="xp-bar">
+    <div class="xp-bar-fill" id="xp-fill"></div>
+  </div>
+  <div class="xp-label"><span id="xp">0</span> / <span id="xp-threshold">100</span> XP to next level</div>
+
+  <div class="section-title">
+    <span>🚀 Active Missions</span>
+    <span id="task-count">0 tasks</span>
+  </div>
+
+  <div class="add-form">
+    <input type="text" id="task-input" placeholder="Enter new planetary mission..." onkeypress="if(event.key==='Enter')addTask()">
+    <select id="priority-select">
+      <option value="medium">⚡ Medium</option>
+      <option value="high">🔥 High</option>
+      <option value="low">🌱 Low</option>
+    </select>
+    <button onclick="addTask()">Add</button>
+  </div>
+
+  <ul class="task-list" id="task-list">
+    <li class="loading">Loading missions...</li>
+  </ul>
+
+  <div class="controls">
+    <button onclick="clearCompleted()">Clear Completed</button>
+    <button onclick="exportData()">Export Data</button>
+    <button class="danger" onclick="resetProgress()">Reset All</button>
+  </div>
+
+  <div class="section-title"><span>🏆 Achievements</span></div>
+  <div class="achievements" id="achievements"></div>
+
+  <div class="mnemonic-backup">
+    🔐 Backup Seed (for reference)
+    <code id="mnemonic-text"></code>
+  </div>
+</div>
+
+<footer>Planetary Stewardship Dashboard | Persistent Storage + Gamification</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // --- State ---
+  let state = {
+    tasks: [],
+    level: 1,
+    xp: 0,
+    totalXp: 0,
+    tasksDone: 0,
+    streak: 0,
+    lastActiveDate: null,
+    achievements: [],
+    mnemonic: ''
+  };
+
+  const xpThreshold = 100;
+  const STORAGE_KEY = 'planetary-dashboard-state';
+
+  const achievementDefs = [
+    { id: 'first_task', name: 'First Step', icon: '🌱', desc: 'Complete your first task', check: s => s.tasksDone >= 1 },
+    { id: 'five_tasks', name: 'Rising Star', icon: '⭐', desc: 'Complete 5 tasks', check: s => s.tasksDone >= 5 },
+    { id: 'ten_tasks', name: 'Cosmic Worker', icon: '🌟', desc: 'Complete 10 tasks', check: s => s.tasksDone >= 10 },
+    { id: 'level_5', name: 'Stargazer', icon: '🔭', desc: 'Reach level 5', check: s => s.level >= 5 },
+    { id: 'level_10', name: 'Galaxy Guardian', icon: '🛡️', desc: 'Reach level 10', check: s => s.level >= 10 },
+    { id: 'streak_3', name: 'Consistent', icon: '🔥', desc: '3 day streak', check: s => s.streak >= 3 },
+    { id: 'streak_7', name: 'Unstoppable', icon: '💫', desc: '7 day streak', check: s => s.streak >= 7 },
+    { id: 'xp_500', name: 'XP Hunter', icon: '💎', desc: 'Earn 500 total XP', check: s => s.totalXp >= 500 }
+  ];
+
+  // --- Initialize ---
+  async function init() {
+    await loadState();
+    updateStreak();
+    renderAll();
+  }
+
+  // --- Persistence ---
+  async function loadState() {
+    try {
+      const result = await window.storage.get(STORAGE_KEY);
+      if (result && result.value) {
+        state = JSON.parse(result.value);
+      }
+    } catch (e) {
+      console.log('No saved state, starting fresh');
+    }
+    if (!state.mnemonic) generateMnemonic();
+  }
+
+  async function saveState() {
+    try {
+      await window.storage.set(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.error('Failed to save:', e);
+    }
+  }
+
+  // --- Streak Logic ---
+  function updateStreak() {
+    const today = new Date().toDateString();
+    if (state.lastActiveDate) {
+      const last = new Date(state.lastActiveDate);
+      const diff = Math.floor((new Date(today) - last) / (1000 * 60 * 60 * 24));
+      if (diff > 1) state.streak = 0;
+    }
+  }
+
+  function recordActivity() {
+    const today = new Date().toDateString();
+    if (state.lastActiveDate !== today) {
+      const last = state.lastActiveDate ? new Date(state.lastActiveDate) : null;
+      const diff = last ? Math.floor((new Date(today) - last) / (1000 * 60 * 60 * 24)) : 0;
+      if (diff === 1) state.streak++;
+      else if (diff > 1) state.streak = 1;
+      else if (!last) state.streak = 1;
+      state.lastActiveDate = today;
+    }
+  }
+
+  // --- Tasks ---
+  function addTask() {
+    const input = document.getElementById('task-input');
+    const priority = document.getElementById('priority-select').value;
+    const title = input.value.trim();
+    if (!title) return;
+
+    state.tasks.push({
+      id: Date.now(),
+      title,
+      priority,
+      completed: false,
+      createdAt: new Date().toISOString()
+    });
+
+    input.value = '';
+    saveState();
+    renderTasks();
+    showToast('Mission added! 🚀');
+  }
+
+  function completeTask(id) {
+    const task = state.tasks.find(t => t.id === id);
+    if (task && !task.completed) {
+      task.completed = true;
+      task.completedAt = new Date().toISOString();
+
+      const xpGain = task.priority === 'high' ? 40 : task.priority === 'low' ? 15 : 25;
+      gainXP(xpGain);
+      state.tasksDone++;
+      recordActivity();
+      checkAchievements();
+      saveState();
+      renderAll();
+      showToast(`+${xpGain} XP earned! ✨`);
+    }
+  }
+
+  function deleteTask(id) {
+    state.tasks = state.tasks.filter(t => t.id !== id);
+    saveState();
+    renderTasks();
+  }
+
+  function clearCompleted() {
+    const count = state.tasks.filter(t => t.completed).length;
+    if (count === 0) return showToast('No completed tasks to clear');
+    state.tasks = state.tasks.filter(t => !t.completed);
+    saveState();
+    renderTasks();
+    showToast(`Cleared ${count} completed tasks`);
+  }
+
+  // --- XP & Leveling ---
+  function gainXP(amount) {
+    state.xp += amount;
+    state.totalXp += amount;
+
+    while (state.xp >= xpThreshold) {
+      state.xp -= xpThreshold;
+      state.level++;
+      showToast(`🎉 Level Up! Now Level ${state.level}`);
+    }
+    checkAchievements();
+  }
+
+  // --- Achievements ---
+  function checkAchievements() {
+    let newAchievement = false;
+    achievementDefs.forEach(a => {
+      if (!state.achievements.includes(a.id) && a.check(state)) {
+        state.achievements.push(a.id);
+        newAchievement = true;
+        setTimeout(() => showToast(`🏆 Achievement: ${a.name}!`), 500);
+      }
+    });
+    if (newAchievement) renderAchievements();
+  }
+
+  // --- Mnemonic ---
+  function generateMnemonic() {
+    const words = ['nebula','quasar','pulsar','galaxy','orbit','nova','comet','meteor','asteroid','blackhole','supernova','cosmos','stellar','lunar','solar','cosmic','astral','zenith'];
+    state.mnemonic = Array.from({length: 6}, () => words[Math.floor(Math.random() * words.length)]).join(' ');
+  }
+
+  // --- Export ---
+  function exportData() {
+    const data = JSON.stringify(state, null, 2);
+    const blob = new Blob([data], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'planetary-dashboard-backup.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Data exported! 📦');
+  }
+
+  // --- Reset ---
+  async function resetProgress() {
+    if (!confirm('Reset ALL progress? This cannot be undone!')) return;
+    state = { tasks: [], level: 1, xp: 0, totalXp: 0, tasksDone: 0, streak: 0, lastActiveDate: null, achievements: [], mnemonic: '' };
+    generateMnemonic();
+    await saveState();
+    renderAll();
+    showToast('Progress reset. New journey begins! 🌌');
+  }
+
+  // --- Rendering ---
+  function renderAll() {
+    renderStats();
+    renderTasks();
+    renderAchievements();
+    document.getElementById('mnemonic-text').textContent = state.mnemonic;
+  }
+
+  function renderStats() {
+    document.getElementById('level').textContent = state.level;
+    document.getElementById('xp').textContent = state.xp;
+    document.getElementById('total-xp').textContent = state.totalXp;
+    document.getElementById('tasks-done').textContent = state.tasksDone;
+    document.getElementById('streak').textContent = state.streak;
+    document.getElementById('xp-threshold').textContent = xpThreshold;
+    document.getElementById('xp-fill').style.width = `${(state.xp / xpThreshold) * 100}%`;
+  }
+
+  function renderTasks() {
+    const list = document.getElementById('task-list');
+    const active = state.tasks.filter(t => !t.completed);
+    const completed = state.tasks.filter(t => t.completed);
+    const sorted = [...active.sort((a,b) => {
+      const p = {high: 0, medium: 1, low: 2};
+      return p[a.priority] - p[b.priority];
+    }), ...completed];
+
+    document.getElementById('task-count').textContent = `${active.length} active, ${completed.length} done`;
+
+    if (sorted.length === 0) {
+      list.innerHTML = '<li class="empty-state">No missions yet. Add one above to begin! 🌠</li>';
+      return;
+    }
+
+    list.innerHTML = sorted.map(t => `
+      <li class="${t.completed ? 'completed' : ''} priority-${t.priority}">
+        <div class="task-info">
+          <span class="task-title">${t.title}</span>
+          <span class="task-meta">${t.priority.toUpperCase()} • ${new Date(t.createdAt).toLocaleDateString()}</span>
+        </div>
+        <div>
+          ${t.completed 
+            ? `<button onclick="deleteTask(${t.id})">🗑️</button>`
+            : `<button onclick="completeTask(${t.id})">✅ Done</button>`
+          }
+        </div>
+      </li>
+    `).join('');
+  }
+
+  function renderAchievements() {
+    const el = document.getElementById('achievements');
+    el.innerHTML = achievementDefs.map(a => `
+      <div class="badge ${state.achievements.includes(a.id) ? '' : 'locked'}" title="${a.desc}">
+        ${a.icon} ${a.name}
+      </div>
+    `).join('');
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
+  // --- Start ---
+  init();
+</script>
+</body>
+</html>
